@@ -12,14 +12,18 @@
 #ifndef SRC_COLLECT_MALLOC_HOOK_H_
 #define SRC_COLLECT_MALLOC_HOOK_H_
 
-#include "malloc_hook_c.h"
-
 namespace heap_memory_profiler {
+
+using MallocHook_AllocHook = void(*)(const void* ptr, size_t size);
+using MallocHook_DeallocHook = void(*)(const void* ptr);
 
 class MallocHook {
 public:
     inline static bool add_alloc_hook(MallocHook_AllocHook hook);
     inline static bool add_dealloc_hook(MallocHook_DeallocHook hook);
+
+    static void invoke_alloc_hook_slow(const void* ptr, size_t size);
+    static void invoke_dealloc_hook_slow(const void* ptr);
 
 };
 

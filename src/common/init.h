@@ -9,7 +9,8 @@
  * 
  */
 
-#pragma once
+#ifndef SRC_COMMON_INIT_H_
+#define SRC_COMMON_INIT_H_
 
 namespace heap_memory_profiler {
 
@@ -54,3 +55,6 @@ private:
     REGISTER_MODULE_MODULE_UNIQUE(name, ctor, dtor, __COUNTER__)
 
 }  // namespace heap_memory_profiler
+
+#endif  // SRC_COMMON_INIT_H_
+

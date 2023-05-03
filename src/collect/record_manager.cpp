@@ -70,7 +70,7 @@ int RecordManager::get_caller_stack_trace(int skip_count, void** stack) {
 SampleBucket* RecordManager::get_bucket(int depth, const void* const key[]) {
     // 计算哈希
     uintptr_t hash = 0;
-    for (size_t i = 0; i < depth; ++i) {
+    for (int i = 0; i < depth; ++i) {
         hash += reinterpret_cast<uintptr_t>(key[i]);
         hash += hash << 10;
         hash ^= hash >> 6;
@@ -106,7 +106,7 @@ SampleBucket* RecordManager::get_bucket(int depth, const void* const key[]) {
 std::string RecordManager::parse_bucket(const SampleBucket& bucket, const char* extra) {
     std::string res;
     char buf[512] = {0};
-    int num = snprintf(buf, sizeof(buf), "%6d: %8d [%6d: %8d ] @%s",
+    int num = snprintf(buf, sizeof(buf), "%6d: %8lld [%6d: %8lld ] @%s",
         bucket.call_alloc_num - bucket.call_dealloc_num,
         bucket.alloc_size - bucket.dealloc_size,
         bucket.call_alloc_num,
@@ -117,8 +117,8 @@ std::string RecordManager::parse_bucket(const SampleBucket& bucket, const char* 
     }
     buf[num] = '\0';
     res += buf;
-    for (size_t i = 0; i < bucket.depth; ++i) {
-        num = snprintf(buf, sizeof(buf), " 0x%08d", reinterpret_cast<uintptr_t>(bucket.stack[i]));
+    for (int i = 0; i < bucket.depth; ++i) {
+        num = snprintf(buf, sizeof(buf), " 0x%08lu", reinterpret_cast<uintptr_t>(bucket.stack[i]));
         if (num < 0) {
             return "";
         }
@@ -132,7 +132,7 @@ std::string RecordManager::parse_bucket(const SampleBucket& bucket, const char* 
 SampleBucket** RecordManager::make_sorted_bucket_list() const {
     SampleBucket** list = static_cast<SampleBucket**>(alloc_(sizeof(SampleBucket) * bucket_num_));
     int bucket_count = 0;
-    for (size_t i = 0; i < SampleFixedVariable::hash_table_size; ++i) {
+    for (int i = 0; i < SampleFixedVariable::hash_table_size; ++i) {
         SampleBucket* curr = bucket_table_[i];
         for (; curr != nullptr; curr = curr->next) {
             list[bucket_count++] = curr;

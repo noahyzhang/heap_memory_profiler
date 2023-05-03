@@ -16,7 +16,8 @@
 
 namespace heap_memory_profiler {
 
-static const int ConcurrentListCapacity;
+static const int concurrentListCapacity = 8;
+static const int concurrentListMaxValue = 7;
 
 template <typename T>
 class ConcurrentList {
@@ -27,8 +28,11 @@ public:
     int traverse(T* output_array, int n) const;
 
 private:
+    void fixup_priv_end_locked();
+
+private:
     std::atomic<uintptr_t> priv_end;
-    std::atomic<uintptr_t> priv_data[ConcurrentListCapacity];
+    std::atomic<uintptr_t> priv_data[concurrentListCapacity];
 };
 
 }  // namespace heap_memory_profiler
