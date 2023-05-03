@@ -1,10 +1,12 @@
 #include <stddef.h>
+#include <string.h>
 #include <gflags/gflags.h>
 #include <fstream>
 #include "collect/sample_config.h"
 #include "collect/record_manager.h"
 #include "common/spinlock.h"
 #include "common/init.h"
+#include "collect/malloc_hook.h"
 
 /**
  * 注意不要在此库中主动或者被动的调用申请、释放内存的操作，可能会造成死循环，主要谨防第三方库
@@ -155,6 +157,18 @@ static void record_dealloc(const void* ptr) {
     heap_lock.unlock();
 }
 
+void alloc_hook(const void* ptr, size_t size) {
+    if (ptr != nullptr) {
+        record_alloc(ptr, size, 0);
+    }
+}
+
+void dealloc_hook(const void* ptr) {
+    if (ptr != nullptr) {
+        record_dealloc(ptr);
+    }
+}
+
 extern "C" void heap_profiler_start(const char* prefix) {
     LockGuard<SpinLock> lock_guard(&heap_lock);
 
@@ -170,8 +184,13 @@ extern "C" void heap_profiler_start(const char* prefix) {
     last_dump_time_s = 0;
 
     if (FLAGS_only_mmap_profiler == false) {
-        
+        MallocHook::add_alloc_hook(&alloc_hook);
+        MallocHook::add_dealloc_hook(&dealloc_hook);
     }
+    const int prefix_len = strlen(prefix);
+    filename_prefix = reinterpret_cast<char*>(profiler_malloc(prefix_len + 1));
+    memcpy(filename_prefix, prefix, prefix_len);
+    filename_prefix[prefix_len] = '\0';
 }
 
 static void heap_profiler_init() {

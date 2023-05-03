@@ -18,7 +18,8 @@ namespace heap_memory_profiler {
 
 class MallocHook {
 public:
-    inline static bool add_new_hook();
+    inline static bool add_alloc_hook(MallocHook_AllocHook hook);
+    inline static bool add_dealloc_hook(MallocHook_DeallocHook hook);
 
 };
 

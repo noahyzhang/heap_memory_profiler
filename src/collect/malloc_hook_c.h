@@ -18,7 +18,11 @@
 extern "C" {
 #endif
 
-using MallocHook_NewHook = void(*)(const void* ptr, size_t size);
+using MallocHook_AllocHook = void(*)(const void* ptr, size_t size);
+using MallocHook_DeallocHook = void(*)(const void* ptr);
+
+int MallocHook_add_alloc_hook(MallocHook_AllocHook hook);
+int MallocHook_add_dealloc_hook(MallocHook_DeallocHook hook);
 
 #ifdef __cpluscplus
 }
