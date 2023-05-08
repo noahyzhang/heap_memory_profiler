@@ -3,6 +3,7 @@
 #include <fstream>
 #include "common/util.h"
 #include "sample_config.h"
+#include "stack/stack_strace.h"
 #include "record_manager.h"
 
 namespace heap_memory_profiler {
@@ -64,7 +65,7 @@ int RecordManager::fill_ordered_profile(std::ostream& fstream) {
 }
 
 int RecordManager::get_caller_stack_trace(int skip_count, void** stack) {
-    
+    get_stack_strace(stack, SampleBucket::max_stack_depth, SampleFixedVariable::strip_frames + skip_count + 1);
 }
 
 SampleBucket* RecordManager::get_bucket(int depth, const void* const key[]) {

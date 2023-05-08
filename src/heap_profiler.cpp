@@ -135,12 +135,11 @@ static void record_alloc(const void* ptr, size_t bytes, int skip_count) {
     const int max_stack_depth = SampleConfig::get_instance().get_max_stack_depth();
     void* stack[max_stack_depth] = {0};
     int depth = RecordManager::get_caller_stack_trace(skip_count + 1, stack);
-    heap_lock.lock();
+    LockGuard<SpinLock> guard(&heap_lock);
     if (is_on) {
         record_manager->record_alloc(ptr, bytes, depth, stack);
         check_dump_profile();
     }
-    heap_lock.unlock();
 }
 
 /**
@@ -149,12 +148,11 @@ static void record_alloc(const void* ptr, size_t bytes, int skip_count) {
  * @param ptr 
  */
 static void record_dealloc(const void* ptr) {
-    heap_lock.lock();
+    LockGuard<SpinLock> guard(&heap_lock);
     if (is_on) {
         record_manager->record_dealloc(ptr);
         check_dump_profile();
     }
-    heap_lock.unlock();
 }
 
 void alloc_hook(const void* ptr, size_t size) {
@@ -171,7 +169,6 @@ void dealloc_hook(const void* ptr) {
 
 extern "C" void heap_profiler_start(const char* prefix) {
     LockGuard<SpinLock> lock_guard(&heap_lock);
-
     if (is_on) {
         return;
     }

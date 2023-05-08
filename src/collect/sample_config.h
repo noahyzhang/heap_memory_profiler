@@ -35,6 +35,7 @@ public:
     static const char* heap_file_suffix;
     static const char* profile_header;
     static const char* proc_self_maps_header;
+    static const int strip_frames;
 };
 
 }  // namespace heap_memory_profiler
