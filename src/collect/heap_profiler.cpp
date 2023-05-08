@@ -5,12 +5,14 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <dlfcn.h>
 #include "sample_config.h"
 #include "record_manager.h"
 #include "common/spinlock.h"
 #include "common/init.h"
 #include "malloc_hook.h"
 #include "common/private_memory_manager.h"
+#include "collect/heap_profiler.h"
 
 /**
  * 注意不要在此库中主动或者被动的调用申请、释放内存的操作，可能会造成死循环，主要谨防第三方库
@@ -62,6 +64,30 @@ static int64_t last_dump_time_s = 0;
 static RecordManager* record_manager = nullptr;
 
 static char* global_profiler_buffer = nullptr;
+
+malloc_type real_malloc = nullptr;
+free_type real_free = nullptr;
+cfree_type real_cfree = nullptr;
+calloc_type real_calloc = nullptr;
+realloc_type real_realloc = nullptr;
+memalign_type real_memalign = nullptr;
+posix_memalign_type real_posix_memalign = nullptr;
+aligned_alloc_type real_aligned_alloc = nullptr;
+valloc_type real_valloc = nullptr;
+pvalloc_type real_pvalloc = nullptr;
+
+void init_hook_func() {
+    real_malloc = reinterpret_cast<malloc_type>(dlsym(RTLD_NEXT, "malloc"));
+    real_free = reinterpret_cast<free_type>(dlsym(RTLD_NEXT, "free"));
+    real_cfree = reinterpret_cast<cfree_type>(dlsym(RTLD_NEXT, "cfree"));
+    real_calloc = reinterpret_cast<calloc_type>(dlsym(RTLD_NEXT, "calloc"));
+    real_realloc = reinterpret_cast<realloc_type>(dlsym(RTLD_NEXT, "realloc"));
+    real_memalign = reinterpret_cast<memalign_type>(dlsym(RTLD_NEXT, "memalign"));
+    real_posix_memalign = reinterpret_cast<posix_memalign_type>(dlsym(RTLD_NEXT, "posix_memalign"));
+    real_aligned_alloc = reinterpret_cast<aligned_alloc_type>(dlsym(RTLD_NEXT, "aligned_alloc"));
+    real_valloc = reinterpret_cast<valloc_type>(dlsym(RTLD_NEXT, "valloc"));
+    real_pvalloc = reinterpret_cast<pvalloc_type>(dlsym(RTLD_NEXT, "pvalloc"));
+}
 
 static void* profiler_alloc(size_t bytes) {
     return PrivateMemoryManager::get_instance().alloc(bytes);
@@ -287,6 +313,7 @@ extern "C" int heap_profiler_stop() {
 }
 
 static void heap_profiler_init() {
+    init_hook_func();
 }
 
 static void heap_profiler_destory() {
