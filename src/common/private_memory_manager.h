@@ -13,18 +13,13 @@
 #define SRC_COMMON_PRIVATE_MEMORY_MANAGER_H_
 
 #include <string.h>
+#include "collect/heap_profiler.h"
 
 namespace heap_memory_profiler {
 
-// 内部私有内存字节数: 2M
-#define MAX_PRIVATE_MEMORY_BYTES (2 * 1024 * 1024)
-
 class PrivateMemoryManager {
 private:
-    PrivateMemoryManager() {
-        memset(private_memory, 0, MAX_PRIVATE_MEMORY_BYTES);
-        cur_memory_pos = private_memory;
-    }
+    PrivateMemoryManager() = default;
 public:
     ~PrivateMemoryManager() = default;
     PrivateMemoryManager(const PrivateMemoryManager&) = delete;
@@ -39,21 +34,18 @@ public:
 
 public:
     void* alloc(size_t size) {
-        // 这 4 字节存储用户申请内存大小
-        int wrap_size = size + 4;
-        if (size == 0 || wrap_size > cur_memory_bytes) {
+        if (real_malloc == nullptr) {
             return nullptr;
         }
-        (*(uint32_t*)cur_memory_pos) = size;
-        char* res = cur_memory_pos + 4;
-        cur_memory_pos += wrap_size;
+        return real_malloc(size);
     }
-    void dealloc(void* ptr);
 
-private:
-    char private_memory[MAX_PRIVATE_MEMORY_BYTES];
-    int cur_memory_bytes{MAX_PRIVATE_MEMORY_BYTES};
-    char* cur_memory_pos{nullptr};
+    void dealloc(void* ptr) {
+        if (real_free == nullptr) {
+            return;
+        }
+        return real_free(ptr);
+    }
 };
 
 }  // namespace heap_memory_profiler
