@@ -15,8 +15,6 @@
 
 namespace heap_memory_profiler {
 
-static SpinLock concurrent_list_spinlock;
-
 template <typename T>
 bool ConcurrentList<T>::add(T value) {
     uintptr_t val = bit_cast<uintptr_t>(value);

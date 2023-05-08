@@ -48,6 +48,7 @@ public:
         char* res = cur_memory_pos + 4;
         cur_memory_pos += wrap_size;
     }
+    void dealloc(void* ptr);
 
 private:
     char private_memory[MAX_PRIVATE_MEMORY_BYTES];

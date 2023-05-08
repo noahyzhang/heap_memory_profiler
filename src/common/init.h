@@ -40,7 +40,7 @@ private:
     namespace {                                                             \
         static void init_module_##UniqueID() { ctor; }               \
         static void destruct_module_##UniqueID() { dtor; }            \
-        Initializer init_module_##UniqueID(                          \
+        Initializer init_module_object_##UniqueID(                          \
             #name,                                                          \
             init_module_##UniqueID,                                  \
             destruct_module_##UniqueID);                              \

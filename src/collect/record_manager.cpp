@@ -1,12 +1,22 @@
 #include <string.h>
 #include <algorithm>
-#include <fstream>
 #include "common/util.h"
 #include "sample_config.h"
 #include "stack/stack_strace.h"
 #include "record_manager.h"
 
 namespace heap_memory_profiler {
+
+RecordManager::RecordManager(Allocator alloc, Deallocator dealloc)
+    : alloc_(alloc)
+    , dealloc_(dealloc) {
+    
+
+}
+
+RecordManager::~RecordManager() {
+
+}
 
 void RecordManager::record_alloc(
     const void* ptr, size_t bytes,
@@ -38,30 +48,41 @@ void RecordManager::record_dealloc(const void* ptr) {
     }
 }
 
-int RecordManager::fill_ordered_profile(std::ostream& fstream) {
-    fstream << SampleFixedVariable::profile_header;
-    fstream << parse_bucket(total_mem_info_, " heapprofile");
+int RecordManager::fill_ordered_profile(char buf[], int size) {
+    int map_len = snprintf(buf, size, "%s", SampleFixedVariable::proc_self_maps_header);
+    if (map_len < 0 || map_len >= size) {
+        return -1;
+    }
+    bool dummy;
+    map_len += fill_proc_self_maps(buf + map_len, size - map_len, &dummy);
+    if (map_len > size) {
+        return -2;
+    }
+    char* const map_start = buf + size - map_len;
+    memmove(map_start, buf, map_len);
+    size -= map_len;
 
-    // TODO mmap
-    // if (is_profile_mmap_) {
-    //     for (size_t i = 0; i < SampleFixedVariable::hash_table_size; ++i) {
-    //         SampleBucket* bucket = bucket_table_[i];
-    //         for (; bucket != nullptr; bucket = bucket->next) {
-    //             fstream << parse_bucket(*bucket, "");
-    //         }
-    //     }
-    // }
+    SampleStats stats;
+    memset(&stats, 0, sizeof(stats));
+    int bucket_len = snprintf(buf, size, "%s", SampleFixedVariable::profile_header);
+    if (bucket_len < 0 || bucket_len >= size) {
+        return -3;
+    }
+    bucket_len = parse_bucket(total_mem_info_, buf, bucket_len, size, " heapprofile", &stats);
 
     SampleBucket** list = make_sorted_bucket_list();
-    for (size_t i = 0; i < bucket_num_; ++i) {
-        fstream << parse_bucket(*list[i], "");
+    for (int i = 0; i < bucket_num_; ++i) {
+        bucket_len = parse_bucket(*list[i], buf, bucket_len, size, "", &stats);
+    }
+    if (bucket_len >= size) {
+        return -4;
     }
     dealloc_(list);
-
-    // "/proc/self/maps" 中的内容
-    fstream << SampleFixedVariable::proc_self_maps_header;
-    fstream << Util::get_proc_self_maps();
-    return 0;
+    if (buf+bucket_len > map_start) {
+        return -5;
+    }
+    memmove(buf+bucket_len, map_start, map_len);
+    return bucket_len + map_len;
 }
 
 int RecordManager::get_caller_stack_trace(int skip_count, void** stack) {
@@ -104,30 +125,64 @@ SampleBucket* RecordManager::get_bucket(int depth, const void* const key[]) {
     return new_bucket;
 }
 
-std::string RecordManager::parse_bucket(const SampleBucket& bucket, const char* extra) {
-    std::string res;
-    char buf[512] = {0};
+// std::string RecordManager::parse_bucket(const SampleBucket& bucket, const char* extra) {
+//     std::string res;
+//     char buf[512] = {0};
+//     int num = snprintf(buf, sizeof(buf), "%6d: %8lld [%6d: %8lld ] @%s",
+//         bucket.call_alloc_num - bucket.call_dealloc_num,
+//         bucket.alloc_size - bucket.dealloc_size,
+//         bucket.call_alloc_num,
+//         bucket.alloc_size,
+//         extra);
+//     if (num < 0) {
+//         return "";
+//     }
+//     buf[num] = '\0';
+//     res += buf;
+//     for (int i = 0; i < bucket.depth; ++i) {
+//         num = snprintf(buf, sizeof(buf), " 0x%08lu", reinterpret_cast<uintptr_t>(bucket.stack[i]));
+//         if (num < 0) {
+//             return "";
+//         }
+//         buf[num] = '\0';
+//         res += buf;
+//     }
+//     res += '\n';
+//     return res;
+// }
+
+int RecordManager::parse_bucket(
+    const SampleBucket& bucket, char* buf, int buf_len, int buf_size,
+    const char* extra, SampleStats* profile_stats) {
+    if (profile_stats != nullptr) {
+        profile_stats->call_alloc_num += bucket.call_alloc_num;
+        profile_stats->call_dealloc_num += bucket.call_dealloc_num;
+        profile_stats->alloc_size += bucket.alloc_size;
+        profile_stats->dealloc_size += bucket.dealloc_size;
+    }
     int num = snprintf(buf, sizeof(buf), "%6d: %8lld [%6d: %8lld ] @%s",
         bucket.call_alloc_num - bucket.call_dealloc_num,
         bucket.alloc_size - bucket.dealloc_size,
         bucket.call_alloc_num,
         bucket.alloc_size,
         extra);
-    if (num < 0) {
-        return "";
+    if (num < 0 || num >= buf_size - buf_len) {
+        return buf_len;
     }
-    buf[num] = '\0';
-    res += buf;
-    for (int i = 0; i < bucket.depth; ++i) {
+    buf_len += num;
+    for (int i = 0; i < bucket.depth; i++) {
         num = snprintf(buf, sizeof(buf), " 0x%08lu", reinterpret_cast<uintptr_t>(bucket.stack[i]));
-        if (num < 0) {
-            return "";
+        if (num < 0 || num >= buf_size - buf_len) {
+            return buf_len;
         }
-        buf[num] = '\0';
-        res += buf;
+        buf_len += num;
     }
-    res += '\n';
-    return res;
+    num = snprintf(buf + buf_len, buf_size - buf_len, "\n");
+    if (num < 0 || num >= buf_size - buf_len) {
+        return buf_len;
+    }
+    buf_len += num;
+    return buf_len;
 }
 
 SampleBucket** RecordManager::make_sorted_bucket_list() const {

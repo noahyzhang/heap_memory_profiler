@@ -13,21 +13,21 @@
 
 namespace heap_memory_profiler {
 
-class SampleConfig {
-public:
-    static SampleConfig& get_instance() {
-        static SampleConfig instance;
-        return instance;
-    }
+// class SampleConfig {
+// public:
+//     static SampleConfig& get_instance() {
+//         static SampleConfig instance;
+//         return instance;
+//     }
 
-public:
-    int get_max_stack_depth() {
-        return max_stack_depth_;
-    }
+// public:
+//     int get_max_stack_depth() {
+//         return max_stack_depth_;
+//     }
 
-private:
-    int max_stack_depth_;
-};
+// private:
+//     int max_stack_depth_;
+// };
 
 class SampleFixedVariable {
 public:
@@ -36,6 +36,8 @@ public:
     static const char* profile_header;
     static const char* proc_self_maps_header;
     static const int strip_frames;
+    static const int profile_buffer_size;
+    static const int max_stack_depth;
 };
 
 }  // namespace heap_memory_profiler

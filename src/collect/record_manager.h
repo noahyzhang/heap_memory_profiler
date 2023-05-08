@@ -12,8 +12,6 @@
 #pragma once
 
 #include <stddef.h>
-#include <string>
-#include <unordered_map>
 #include "sample_stats.h"
 
 namespace heap_memory_profiler {
@@ -47,6 +45,10 @@ private:
 
 class RecordManager {
 public:
+    using Allocator = void*(*)(size_t);
+    using Deallocator = void(*)(void*);
+    RecordManager(Allocator alloc, Deallocator dealloc);
+    ~RecordManager();
 
 public:
     void record_alloc(const void* ptr, size_t bytes, int stack_depth, const void* const call_stack[]);
@@ -56,14 +58,16 @@ public:
         return total_mem_info_;
     }
 
-    int fill_ordered_profile(std::ostream& fstream);
+    int fill_ordered_profile(char buf[], int size);
 
 public:
     static int get_caller_stack_trace(int skip_count, void** stack);
 
 private:
     SampleBucket* get_bucket(int depth, const void* const key[]);
-    std::string parse_bucket(const SampleBucket& bucket, const char* extra);
+    // std::string parse_bucket(const SampleBucket& bucket, const char* extra);
+    int parse_bucket(const SampleBucket& bucket, char* buf, int buf_len, int buf_size,
+        const char* extra, SampleStats* profile_stats);
     SampleBucket** make_sorted_bucket_list() const;
 
 private:
@@ -76,8 +80,8 @@ private:
 
     std::unordered_map<const void*, AllocValue> address_mp_;
 
-    Allocator alloc_;
-    Deallocator dealloc_;
+    Allocator alloc_{nullptr};
+    Deallocator dealloc_{nullptr};
 };
 
 }  // namespace heap_memory_profiler

@@ -22,6 +22,9 @@ public:
     inline static bool add_alloc_hook(MallocHook_AllocHook hook);
     inline static bool add_dealloc_hook(MallocHook_DeallocHook hook);
 
+    inline static bool remove_alloc_hook(MallocHook_AllocHook hook);
+    inline static bool remove_dealloc_hook(MallocHook_DeallocHook hook);
+
     static void invoke_alloc_hook_slow(const void* ptr, size_t size);
     static void invoke_dealloc_hook_slow(const void* ptr);
 

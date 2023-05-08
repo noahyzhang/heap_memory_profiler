@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include "common/concurrent_list.h"
 #include "malloc_hook.h"
 
@@ -15,10 +16,19 @@ inline bool MallocHook::add_dealloc_hook(MallocHook_DeallocHook hook) {
     return dealloc_hooks_.add(hook);
 }
 
+inline bool remove_alloc_hook(MallocHook_AllocHook hook) {
+    alloc_hooks_.remove(hook);
+}
+
+inline bool remove_dealloc_hook(MallocHook_DeallocHook hook) {
+    dealloc_hooks_.remove(hook);
+}
+
 #define INVOKE_HOOKS(HookType, hook_list, args) \
     do { \
-        HookType hooks[concurrentListMaxValue];  \
-        int num_hooks = hook_list.traverse(hooks, concurrentListMaxValue); \
+        static const int list_num = ConcurrentList<HookType>::concurrentListMaxValue; \
+        HookType hooks[list_num];  \
+        int num_hooks = hook_list.traverse(hooks, list_num); \
         for (int i = 0; i < num_hooks; ++i) {            \
             (*hooks[i])args;                                                 \
         }  \
