@@ -3,6 +3,7 @@
 #include "common/util.h"
 #include "sample_config.h"
 #include "stack/stack_strace.h"
+#include "common/prof_maps.h"
 #include "record_manager.h"
 
 namespace heap_memory_profiler {
@@ -10,12 +11,28 @@ namespace heap_memory_profiler {
 RecordManager::RecordManager(Allocator alloc, Deallocator dealloc)
     : alloc_(alloc)
     , dealloc_(dealloc) {
-    
-
+    const int table_bytes = SampleFixedVariable::hash_table_size * sizeof(*bucket_table_);
+    bucket_table_ = static_cast<SampleBucket**>(alloc_(table_bytes));
+    memset(bucket_table_, 0, table_bytes);
+    address_map_ = new(alloc_(sizeof(AllocationMap))) AllocationMap(alloc_, dealloc_);
+    memset(&total_mem_info_, 0, sizeof(total_mem_info_));
+    bucket_num_ = 0;
 }
 
 RecordManager::~RecordManager() {
-
+    address_map_->~AddressMap();
+    dealloc_(address_map_);
+    address_map_ = nullptr;
+    for (int i = 0; i < SampleFixedVariable::hash_table_size; ++i) {
+        for (SampleBucket* curr = bucket_table_[i]; curr != 0;) {
+            SampleBucket* bucket = curr;
+            curr = curr->next;
+            dealloc_(bucket->stack);
+            dealloc_(bucket);
+        }
+    }
+    dealloc_(bucket_table_);
+    bucket_table_ = nullptr;
 }
 
 void RecordManager::record_alloc(
@@ -31,20 +48,18 @@ void RecordManager::record_alloc(
     AllocValue val;
     val.set_bucket(bucket);
     val.set_alloc_bytes(bytes);
-    address_mp_[ptr] = val;
+    address_map_->insert(ptr, val);
 }
 
 void RecordManager::record_dealloc(const void* ptr) {
-    auto iter = address_mp_.find(ptr);
-    if (iter != address_mp_.end()) {
-        SampleBucket* bucket = iter->second.get_bucket();
+    AllocValue v;
+    if (address_map_->find_and_remove(ptr, &v)) {
+        SampleBucket* bucket = v.get_bucket();
         bucket->call_dealloc_num++;
-        bucket->dealloc_size += iter->second.get_alloc_bytes();
+        bucket->dealloc_size += v.get_alloc_bytes();
         // 总体的内存管理信息
         total_mem_info_.call_dealloc_num++;
-        total_mem_info_.dealloc_size += iter->second.get_alloc_bytes();
-        // 移除这个指针
-        address_mp_.erase(iter);
+        total_mem_info_.dealloc_size += v.get_alloc_bytes();
     }
 }
 
@@ -124,32 +139,6 @@ SampleBucket* RecordManager::get_bucket(int depth, const void* const key[]) {
     bucket_num_++;
     return new_bucket;
 }
-
-// std::string RecordManager::parse_bucket(const SampleBucket& bucket, const char* extra) {
-//     std::string res;
-//     char buf[512] = {0};
-//     int num = snprintf(buf, sizeof(buf), "%6d: %8lld [%6d: %8lld ] @%s",
-//         bucket.call_alloc_num - bucket.call_dealloc_num,
-//         bucket.alloc_size - bucket.dealloc_size,
-//         bucket.call_alloc_num,
-//         bucket.alloc_size,
-//         extra);
-//     if (num < 0) {
-//         return "";
-//     }
-//     buf[num] = '\0';
-//     res += buf;
-//     for (int i = 0; i < bucket.depth; ++i) {
-//         num = snprintf(buf, sizeof(buf), " 0x%08lu", reinterpret_cast<uintptr_t>(bucket.stack[i]));
-//         if (num < 0) {
-//             return "";
-//         }
-//         buf[num] = '\0';
-//         res += buf;
-//     }
-//     res += '\n';
-//     return res;
-// }
 
 int RecordManager::parse_bucket(
     const SampleBucket& bucket, char* buf, int buf_len, int buf_size,

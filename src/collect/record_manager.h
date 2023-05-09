@@ -13,6 +13,7 @@
 
 #include <stddef.h>
 #include "sample_stats.h"
+#include "common/address_map.h"
 
 namespace heap_memory_profiler {
 
@@ -71,14 +72,14 @@ private:
     SampleBucket** make_sorted_bucket_list() const;
 
 private:
+    using AllocationMap = AddressMap<AllocValue>;
+
     SampleBucket** bucket_table_{nullptr};
     uint64_t bucket_num_{0};
 
     SampleBucket total_mem_info_;
 
-    bool is_profile_mmap_;
-
-    std::unordered_map<const void*, AllocValue> address_mp_;
+    AllocationMap* address_map_{nullptr};
 
     Allocator alloc_{nullptr};
     Deallocator dealloc_{nullptr};
