@@ -1,9 +1,11 @@
-#include "stack_strace_inl.h"
-#include "stack_strace.h"
+#include "stack/stack_strace_inl.h"
+#include "stack/stack_strace_libunwind.h"
+#include "stack/stack_strace.h"
 
 namespace heap_memory_profiler {
 
-static CollectStackBase *get_stack_impl = &impl__libunwind;
+static CollectStackLibunwindImpl stack_libunwind_impl;
+static CollectStackBase *get_stack_impl = &stack_libunwind_impl;
 
 static int frame_forcer(int rv) {
     return rv;

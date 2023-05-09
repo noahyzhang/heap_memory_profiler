@@ -1,3 +1,17 @@
+/**
+ * @file stack_strace_libunwind.h
+ * @author your name (you@domain.com)
+ * @brief 
+ * @version 0.1
+ * @date 2023-05-09
+ * 
+ * @copyright Copyright (c) 2023
+ * 
+ */
+
+#ifndef SRC_STACK_STACK_STRACE_LIBUNWIND_H_
+#define SRC_STACK_STACK_STRACE_LIBUNWIND_H_
+
 #include <libunwind.h>
 #include <string.h>
 #include "stack_strace_inl.h"
@@ -65,3 +79,5 @@ int CollectStackLibunwindImpl::get_stack_trace_with_context(
 }
 
 }  // namespace heap_memory_profiler
+
+#endif  // SRC_STACK_STACK_STRACE_LIBUNWIND_H_
